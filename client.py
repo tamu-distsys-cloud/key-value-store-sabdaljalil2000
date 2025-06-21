@@ -8,7 +8,6 @@ from server import GetArgs, GetReply, PutAppendArgs, PutAppendReply
 def nrand() -> int:
     return random.getrandbits(62)
 
-
 class Clerk:
     def __init__(self, servers: List[ClientEnd], cfg):
         self.servers = servers
@@ -29,11 +28,7 @@ class Clerk:
     # must match the declared types of the RPC handler function's
     # arguments in server.py.
     def get(self, key: str) -> str:
-        with self.lock:
-            self.request_id += 1
-            req_id = self.request_id
-
-        args = GetArgs(key, self.client_id, req_id)
+        args = GetArgs(key)
         nshards = self.cfg.nservers
         nreplicas = self.cfg.nreplicas
         # shard = int(key) % nshards
@@ -42,16 +37,14 @@ class Clerk:
         except ValueError:
             shard = ord(key[0]) % nshards
         servers_l = [(shard + i) % nshards for i in range(nreplicas)]
-        start = 0
         while True:
-            i = servers_l[start]
-            start = (start + 1) % len(servers_l)
-            try:
-                reply = self.servers[i].call("KVServer.Get", args)
-                if reply is not None and isinstance(reply, GetReply):
-                    return reply.value
-            except TimeoutError:
-                continue
+            for i in servers_l:
+                try:
+                    reply = self.servers[i].call("KVServer.Get", args)
+                    if reply is not None and isinstance(reply, GetReply):
+                        return reply.value
+                except TimeoutError:
+                    continue
         return ""
 
     # Shared by Put and Append.
@@ -77,16 +70,14 @@ class Clerk:
         except ValueError:
             shard = ord(key[0]) % nshards
         servers_l = [(shard + i) % nshards for i in range(nreplicas)]
-        start = 0
         while True:
-            i = servers_l[start]
-            start = (start + 1) % len(servers_l)
-            try:
-                reply = self.servers[i].call("KVServer."+op, args)
-                if reply is not None and isinstance(reply, PutAppendReply):
-                    return reply.value
-            except TimeoutError:
-                continue
+            for i in servers_l:
+                try:
+                    reply = self.servers[i].call("KVServer."+op, args)
+                    if reply is not None and isinstance(reply, PutAppendReply):
+                        return reply.value
+                except TimeoutError:
+                    continue
         return ""
 
     def put(self, key: str, value: str):
