@@ -1,6 +1,6 @@
 import logging, threading, random
-from typing import Any
-import time, math
+from typing import Tuple, Any
+import time
 
 debugging = False
 
@@ -128,7 +128,7 @@ class KVServer:
 
         return reply
 
-    def Append(self, args: PutAppendArgs) -> PutAppendReply:
+    def Append(self, args: PutAppendArgs):
         if self.me is not None:
             serv_id = self.me
         else:
@@ -161,9 +161,10 @@ class KVServer:
             raise TimeoutError()
 
         with self.mu:
-            info = self.client_last.get(args.client_id)
-            if info and args.request_id <= info[0]:
-                return PutAppendReply(info[1])
+            # last_id, last_reply = self.client_last[args.client_id]
+            last_info = self.client_last.get(args.client_id)
+            if last_info and args.request_id <= last_info[0]:
+                return PutAppendReply(last_info[1])
             old = self.kv_dict.get(args.key, "")
             new = old + args.value
             self.kv_dict[args.key] = new
