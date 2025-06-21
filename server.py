@@ -56,9 +56,7 @@ class KVServer:
             key_id = sum(ord(c) for c in args.key)
             
         primary_id = key_id % self.cfg.nservers
-        responsible = ((serv_id - primary_id) % self.cfg.nservers) < self.cfg.nreplicas
-
-        if not responsible:
+        if not ((serv_id - primary_id) % self.cfg.nservers) < self.cfg.nreplicas:
             raise TimeoutError()
         
         with self.mu:
@@ -66,7 +64,7 @@ class KVServer:
             self.cfg.op()
             
         reply = GetReply(val)
-        return GetReply(val)
+        return reply
 
     def Put(self, args: PutAppendArgs):
         if self.me is not None:
@@ -81,7 +79,6 @@ class KVServer:
             key_id = sum(ord(c) for c in args.key)
             
         primary_id = key_id % self.cfg.nservers
-
         if serv_id != primary_id:
             retry_deadline = time.time() + 2.0
             while time.time() < retry_deadline:
@@ -143,8 +140,6 @@ class KVServer:
             key_id = sum(ord(c) for c in args.key)
             
         primary_id = key_id % self.cfg.nservers
-        
-
         if serv_id != primary_id:
             retry_deadline = time.time() + 2.0
             while time.time() < retry_deadline:
@@ -187,9 +182,7 @@ class KVServer:
                 if last and args.request_id <= last[0]:
                     continue
                 replica_server.kv_dict[args.key] = new
-                replica_server.client_last[args.client_id] = (args.request_id, old)
-                
-        
+                replica_server.client_last[args.client_id] = (args.request_id, old)  
                 
         reply = PutAppendReply(old)
         return reply
